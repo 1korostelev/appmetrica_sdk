@@ -17,6 +17,7 @@ class AppmetricaSdk {
     }
     return _instance!;
   }
+
   AppmetricaSdk.private(this._channel);
 
   /// Initializes the library in an application with given parameters.
@@ -189,6 +190,36 @@ class AppmetricaSdk {
     await _channel.invokeMethod<String>('reportReferralUrl', <String, dynamic>{
       'referral': referral,
     });
+    return;
+  }
+
+  Future<void> reportShowProductDetailsEvent(
+      {required ProductAttributes attributes}) async {
+    if (_apiKey == null) {
+      throw 'The API key is not set';
+    }
+    await _channel.invokeMethod<String>(
+        'reportShowProductDetailsEvent', attributes.toMap());
+    return;
+  }
+
+  Future<void> reportAddToCartEvent(
+      {required ProductAttributes attributes}) async {
+    if (_apiKey == null) {
+      throw 'The API key is not set';
+    }
+    await _channel.invokeMethod<String>(
+        'reportAddToCartEvent', attributes.toMap());
+    return;
+  }
+
+  Future<void> reportRemoveFromCartEvent(
+      {required ProductAttributes attributes}) async {
+    if (_apiKey == null) {
+      throw 'The API key is not set';
+    }
+    await _channel.invokeMethod<String>(
+        'reportRemoveFromCartEvent', attributes.toMap());
     return;
   }
 }

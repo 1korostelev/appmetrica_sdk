@@ -7,12 +7,10 @@ package com.emallstudio.appmetrica_sdk;
 import androidx.annotation.NonNull;
 
 import android.util.Log;
-import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
-import android.content.Intent;
 
-import android.util.SparseArray;
+import java.util.Arrays;
 import java.util.Map;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
@@ -22,23 +20,30 @@ import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
-import io.flutter.view.FlutterView;
 
 import com.yandex.metrica.YandexMetrica;
 import com.yandex.metrica.YandexMetricaConfig;
+import com.yandex.metrica.ecommerce.ECommerceAmount;
+import com.yandex.metrica.ecommerce.ECommerceCartItem;
+import com.yandex.metrica.ecommerce.ECommerceEvent;
+import com.yandex.metrica.ecommerce.ECommercePrice;
+import com.yandex.metrica.ecommerce.ECommerceProduct;
+import com.yandex.metrica.ecommerce.ECommerceScreen;
 import com.yandex.metrica.profile.Attribute;
-import com.yandex.metrica.profile.StringAttribute;
 import com.yandex.metrica.profile.UserProfile;
-import com.yandex.metrica.profile.UserProfileUpdate;
 
-/** AppmetricaSdkPlugin */
+/**
+ * AppmetricaSdkPlugin
+ */
 public class AppmetricaSdkPlugin implements MethodCallHandler, FlutterPlugin {
     private static final String TAG = "AppmetricaSdkPlugin";
     private MethodChannel methodChannel;
     private Context context;
     private Application application;
 
-    /** Plugin registration for v1 embedder. */
+    /**
+     * Plugin registration for v1 embedder.
+     */
     public static void registerWith(Registrar registrar) {
         final AppmetricaSdkPlugin instance = new AppmetricaSdkPlugin();
         instance.onAttachedToEngine(registrar.context(), registrar.messenger());
@@ -46,14 +51,14 @@ public class AppmetricaSdkPlugin implements MethodCallHandler, FlutterPlugin {
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
-      onAttachedToEngine(flutterPluginBinding.getApplicationContext(), flutterPluginBinding.getBinaryMessenger());
+        onAttachedToEngine(flutterPluginBinding.getApplicationContext(), flutterPluginBinding.getBinaryMessenger());
     }
 
     private void onAttachedToEngine(Context applicationContext, BinaryMessenger binaryMessenger) {
-      application = (Application) applicationContext;
-      context = applicationContext;
-      methodChannel = new MethodChannel(binaryMessenger, "emallstudio.com/appmetrica_sdk");
-      methodChannel.setMethodCallHandler(this);
+        application = (Application) applicationContext;
+        context = applicationContext;
+        methodChannel = new MethodChannel(binaryMessenger, "emallstudio.com/appmetrica_sdk");
+        methodChannel.setMethodCallHandler(this);
     }
 
     @Override
@@ -72,6 +77,15 @@ public class AppmetricaSdkPlugin implements MethodCallHandler, FlutterPlugin {
                 break;
             case "reportEvent":
                 handleReportEvent(call, result);
+                break;
+            case "reportShowProductDetailsEvent":
+                handleReportShowProductDetailsEvent(call, result);
+                break;
+            case "reportAddToCartEvent":
+                handleReportAddToCartEvent(call, result);
+                break;
+            case "reportRemoveFromCartEvent":
+                handleReportRemoveFromCartEvent(call, result);
                 break;
             case "reportUserProfileCustomString":
                 handleReportUserProfileCustomString(call, result);
@@ -107,9 +121,9 @@ public class AppmetricaSdkPlugin implements MethodCallHandler, FlutterPlugin {
                 handleReportReferralUrl(call, result);
                 break;
             default:
-              result.notImplemented();
-              break;
-          }
+                result.notImplemented();
+                break;
+        }
     }
 
     private void handleActivate(MethodCall call, Result result) {
@@ -161,6 +175,106 @@ public class AppmetricaSdkPlugin implements MethodCallHandler, FlutterPlugin {
             result.error("Error reporing event", e.getMessage(), null);
         }
 
+        result.success(null);
+    }
+
+    private void handleReportShowProductDetailsEvent(MethodCall call, Result result) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> arguments = (Map<String, Object>) call.arguments;
+            @SuppressWarnings("unchecked")
+            Map<String, Object> attributes = (Map<String, Object>) arguments.get("attributes");
+
+            if (attributes != null) {
+                final String productName = (String) attributes.get("product");
+                final String productCode = (String) attributes.get("productCode");
+                final Double price = (Double) attributes.get("price");
+                System.out.println("name: " + productName + " code: " + productCode + " price:" + price);
+                if (productName == null || productCode == null || price == null) return;
+
+                ECommercePrice actualPrice = new ECommercePrice(new ECommerceAmount(price, "RUB"));
+                ECommerceProduct product = new ECommerceProduct(productCode)
+                        .setActualPrice(actualPrice) // Optional.
+                        .setName(productName); // Optional.
+
+                ECommerceEvent showProductDetailsEvent = ECommerceEvent.showProductDetailsEvent(product, null);
+                YandexMetrica.reportECommerce(showProductDetailsEvent);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage(), e);
+            result.error("Error reporting event", e.getMessage(), null);
+        }
+        result.success(null);
+    }
+
+    private void handleReportAddToCartEvent(MethodCall call, Result result) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> arguments = (Map<String, Object>) call.arguments;
+            @SuppressWarnings("unchecked")
+            Map<String, Object> attributes = (Map<String, Object>) arguments.get("attributes");
+
+            if (attributes != null) {
+                final String productName = (String) attributes.get("product");
+                final String productCode = (String) attributes.get("productCode");
+                final Double price = (Double) attributes.get("price");
+                final Integer quantity = (Integer) attributes.get("quantity");
+                System.out.println("name: " + productName + " code: " + productCode + " price:" + price);
+                if (productName == null || productCode == null || price == null || quantity == null)
+                    return;
+
+                ECommercePrice actualPrice = new ECommercePrice(new ECommerceAmount(price, "RUB"));
+                ECommerceProduct product = new ECommerceProduct(productCode)
+                        .setActualPrice(actualPrice) // Optional.
+                        .setName(productName); // Optional.
+
+                ECommerceEvent addCartItemEvent = ECommerceEvent.addCartItemEvent(
+                        new ECommerceCartItem(product, actualPrice, quantity)
+                );
+
+                YandexMetrica.reportECommerce(addCartItemEvent);
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage(), e);
+            result.error("Error reporting event", e.getMessage(), null);
+        }
+        result.success(null);
+    }
+
+    private void handleReportRemoveFromCartEvent(MethodCall call, Result result) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> arguments = (Map<String, Object>) call.arguments;
+            @SuppressWarnings("unchecked")
+            Map<String, Object> attributes = (Map<String, Object>) arguments.get("attributes");
+
+            if (attributes != null) {
+                final String productName = (String) attributes.get("product");
+                final String productCode = (String) attributes.get("productCode");
+                final Double price = (Double) attributes.get("price");
+                final Integer quantity = (Integer) attributes.get("quantity");
+                System.out.println("name: " + productName + " code: " + productCode + " price:" + price);
+                if (productName == null || productCode == null || price == null || quantity == null)
+                    return;
+
+                ECommercePrice actualPrice = new ECommercePrice(new ECommerceAmount(price, "RUB"));
+                ECommerceProduct product = new ECommerceProduct(productCode)
+                        .setActualPrice(actualPrice) // Optional.
+                        .setName(productName); // Optional.
+
+                ECommerceEvent removeCartEvent = ECommerceEvent.removeCartItemEvent(
+                        new ECommerceCartItem(product, actualPrice, quantity)
+                );
+
+                YandexMetrica.reportECommerce(removeCartEvent);
+            }
+
+
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage(), e);
+            result.error("Error reporting event", e.getMessage(), null);
+        }
         result.success(null);
     }
 

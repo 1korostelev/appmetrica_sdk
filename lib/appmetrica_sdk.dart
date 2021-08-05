@@ -9,3 +9,4 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 part 'src/appmetrica_sdk.dart';
+part 'src/models/ecommerce_product_attributes.dart';

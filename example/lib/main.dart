@@ -10,7 +10,7 @@ void main() async {
 
   /// Initializing the AppMetrica SDK.
   await AppmetricaSdk()
-      .activate(apiKey: 'db2206ed-c61a-43aa-b95c-6912f60bd25e');
+      .activate(apiKey: '2ccabe3e-cfc5-46f3-84f0-0b9e4f8445e6');
 
   runApp(MyApp());
 }
@@ -132,6 +132,46 @@ class _MyAppState extends State<MyApp> {
                         /// sources like Facebook.
                         AppmetricaSdk().reportReferralUrl(
                           referral: 'fb123456789://example.com/test',
+                        );
+                      },
+                    ),
+                    RaisedButton(
+                      child: const Text('Send ecommerce event'),
+                      onPressed: () {
+                        AppmetricaSdk().reportShowProductDetailsEvent(
+                          attributes: ProductAttributes(
+                              price: 100,
+                              product: 'Super Tasty Cake',
+                              productCode: 'cake-spr-tsts',
+                              category: 'cakes'),
+                        );
+                      },
+                    ),
+                    RaisedButton(
+                      child: const Text('Send add to cart event'),
+                      onPressed: () {
+                        AppmetricaSdk().reportAddToCartEvent(
+                          attributes: ProductAttributes(
+                            price: 100,
+                            product: 'Super Tasty Cake',
+                            productCode: 'cake-spr-tsts',
+                            category: 'cakes',
+                            quantity: 10,
+                          ),
+                        );
+                      },
+                    ),
+                    RaisedButton(
+                      child: const Text('Send remove from cart event'),
+                      onPressed: () {
+                        AppmetricaSdk().reportAddToCartEvent(
+                          attributes: ProductAttributes(
+                            price: 100,
+                            product: 'Super Tasty Cake',
+                            productCode: 'cake-spr-tsts',
+                            category: 'cakes',
+                            quantity: 5,
+                          ),
                         );
                       },
                     ),

@@ -42,6 +42,8 @@
       [self handleSendEventsBuffer:call result:result];
   } else if ([@"reportReferralUrl" isEqualToString:call.method]) {
       [self handleReportReferralUrl:call result:result];
+  } else if ([@"reportECommerceEvent" isEqualToString:call.method]) {
+      [self handleReportECommerceEvent:call result:result];
   } else {
       result(FlutterMethodNotImplemented);
   }
@@ -236,6 +238,29 @@
     NSURL *url = [[NSURL alloc] initWithString:referral];
     
     [YMMYandexMetrica reportReferralUrl:url];
+
+    result(nil);
+}
+
+
+- (void)handleReportECommerceEvent:(FlutterMethodCall*)call result:(FlutterResult)result {
+    NSString* name = call.arguments[@"name"];
+
+    if (![call.arguments[@"attributes"] isEqual:[NSNull null]]) {
+        NSDictionary* attributes = call.arguments[@"attributes"];
+        [YMMYandexMetrica reportEvent:name
+            parameters:attributes
+            onFailure:^(NSError *error) {
+               result([self getFlutterError:error]);
+            }
+        ];
+    } else {
+        [YMMYandexMetrica reportEvent:name
+            onFailure:^(NSError *error) {
+               result([self getFlutterError:error]);
+            }
+        ];
+    }
 
     result(nil);
 }
