@@ -42,8 +42,16 @@
       [self handleSendEventsBuffer:call result:result];
   } else if ([@"reportReferralUrl" isEqualToString:call.method]) {
       [self handleReportReferralUrl:call result:result];
-  } else if ([@"reportECommerceEvent" isEqualToString:call.method]) {
-      [self handleReportECommerceEvent:call result:result];
+  } else if ([@"reportShowProductDetailsEvent" isEqualToString:call.method]) {
+      [self handleReportShowProductDetailsEvent:call result:result];
+  } else if ([@"reportAddToCartEvent" isEqualToString:call.method]) {
+      [self handleReportAddToCartEvent:call result:result];
+  } else if ([@"reportRemoveFromCartEvent" isEqualToString:call.method]) {
+      [self handleReportRemoveFromCartEvent:call result:result];
+  } else if ([@"reportBeginCheckoutEvent" isEqualToString:call.method]) {
+      [self handleReportBeginCheckoutEvent:call result:result];
+  } else if ([@"reportPurchaseEvent" isEqualToString:call.method]) {
+      [self handleReportPurchaseEvent:call result:result];
   } else {
       result(FlutterMethodNotImplemented);
   }
@@ -243,26 +251,131 @@
 }
 
 
-- (void)handleReportECommerceEvent:(FlutterMethodCall*)call result:(FlutterResult)result {
-    NSString* name = call.arguments[@"name"];
-
+- (void)handleReportShowProductDetailsEvent:(FlutterMethodCall*)call result:(FlutterResult)result {
     if (![call.arguments[@"attributes"] isEqual:[NSNull null]]) {
+        printf("report product details");
         NSDictionary* attributes = call.arguments[@"attributes"];
-        [YMMYandexMetrica reportEvent:name
-            parameters:attributes
-            onFailure:^(NSError *error) {
-               result([self getFlutterError:error]);
-            }
-        ];
-    } else {
-        [YMMYandexMetrica reportEvent:name
-            onFailure:^(NSError *error) {
-               result([self getFlutterError:error]);
-            }
-        ];
+        NSString* productName = attributes[@"product"];
+        NSString* productCode = attributes[@"productCode"];
+        double priceValue = [attributes[@"price"] doubleValue];
+        YMMECommerceAmount *actualFiat =
+        [[YMMECommerceAmount alloc] initWithUnit:@"RUB" value:[[NSDecimalNumber alloc] initWithDouble:priceValue]];
+        YMMECommercePrice *actualPrice = [[YMMECommercePrice alloc] initWithFiat:actualFiat];
+        YMMECommerceProduct *product = [[YMMECommerceProduct alloc] initWithSKU:productCode
+                                                                           name:productName
+                                                             categoryComponents:nil
+                                                                        payload:nil
+                                                                    actualPrice:actualPrice
+                                                                  originalPrice:nil
+                                                                     promoCodes:nil];
+        [YMMYandexMetrica reportECommerce:[YMMECommerce showProductDetailsEventWithProduct:product referrer:nil] onFailure:^(NSError *error) {
+            result([self getFlutterError:error]);
+         }];
     }
 
     result(nil);
+}
+
+- (void)handleReportAddToCartEvent:(FlutterMethodCall*)call result:(FlutterResult)result {
+    printf("report add to cart");
+    if (![call.arguments[@"attributes"] isEqual:[NSNull null]]) {
+        NSDictionary* attributes = call.arguments[@"attributes"];
+        YMMECommerceCartItem *addedItems = [self createCartItem: attributes];
+        [YMMYandexMetrica reportECommerce:[YMMECommerce addCartItemEventWithItem:addedItems] onFailure:^(NSError *error) {
+            result([self getFlutterError:error]);
+         }];
+        
+    }
+    result(nil);
+}
+
+- (void)handleReportRemoveFromCartEvent:(FlutterMethodCall*)call result:(FlutterResult)result {
+    printf("report remove from cart");
+    if (![call.arguments[@"attributes"] isEqual:[NSNull null]]) {
+        NSDictionary* attributes = call.arguments[@"attributes"];
+        YMMECommerceCartItem *removedItems = [self createCartItem: attributes];
+        
+        [YMMYandexMetrica reportECommerce:[YMMECommerce removeCartItemEventWithItem:removedItems] onFailure:^(NSError *error) {
+            result([self getFlutterError:error]);
+         }];
+        
+    }
+    result(nil);
+}
+
+- (void)handleReportBeginCheckoutEvent:(FlutterMethodCall*)call result:(FlutterResult)result {
+    printf("report remove from cart");
+    if (![call.arguments[@"cartItems"] isEqual:[NSNull null]]) {
+        NSDictionary* cartItems = call.arguments[@"cartItems"];
+        NSString* cartId = call.arguments[@"cartId"];
+        NSLog(@"%@", cartId);
+        NSMutableArray <YMMECommerceCartItem *> *cartItemsArray = [self createCartItems:cartItems];
+        for (YMMECommerceCartItem* v in cartItemsArray){
+            NSLog(@"cartItem added");
+            NSLog(@"%@", v.product.name);
+        }
+        
+        YMMECommerceOrder *order = [[YMMECommerceOrder alloc] initWithIdentifier:cartId
+                                                                       cartItems:cartItemsArray
+                                                                         payload:nil];
+        
+        [YMMYandexMetrica reportECommerce:[YMMECommerce beginCheckoutEventWithOrder:order] onFailure:^(NSError *error) {
+            result([self getFlutterError:error]);
+         }];
+    }
+    result(nil);
+}
+
+
+- (void)handleReportPurchaseEvent:(FlutterMethodCall*)call result:(FlutterResult)result {
+    printf("report purchase");
+    if (![call.arguments[@"cartItems"] isEqual:[NSNull null]]) {
+        NSDictionary* cartItems = call.arguments[@"cartItems"];
+        NSString* cartId = call.arguments[@"cartId"];
+        NSLog(@"%@", cartId);
+        NSMutableArray <YMMECommerceCartItem *> *cartItemsArray = [self createCartItems:cartItems];
+        for (YMMECommerceCartItem* v in cartItemsArray){
+            NSLog(@"cartItem added");
+            NSLog(@"%@", v.product.name);
+        }
+        
+        YMMECommerceOrder *order = [[YMMECommerceOrder alloc] initWithIdentifier:cartId
+                                                                       cartItems:cartItemsArray
+                                                                         payload:nil];
+        
+        [YMMYandexMetrica reportECommerce:[YMMECommerce purchaseEventWithOrder:order] onFailure:^(NSError *error) {
+            result([self getFlutterError:error]);
+         }];
+    }
+    result(nil);
+}
+
+- (NSMutableArray <YMMECommerceCartItem *>*)createCartItems:(NSDictionary*) items{
+    NSMutableArray <YMMECommerceCartItem *> *cartProducts = [[NSMutableArray alloc] initWithCapacity:items.count];
+    for (NSDictionary* item in items){
+        YMMECommerceCartItem* cartItem = [self createCartItem:item[@"attributes"]];
+        [cartProducts addObject:cartItem];
+    }
+    return cartProducts;
+}
+
+- (YMMECommerceCartItem*)createCartItem:(NSDictionary*) attributes{
+    NSString* productName = attributes[@"product"];
+    NSString* productCode = attributes[@"productCode"];
+    double priceValue = [attributes[@"price"] doubleValue];
+    int quantityValue = [attributes[@"quantity"] intValue];
+    YMMECommerceAmount *actualFiat =
+    [[YMMECommerceAmount alloc] initWithUnit:@"RUB" value:[[NSDecimalNumber alloc] initWithDouble:priceValue]];
+    YMMECommercePrice *actualPrice = [[YMMECommercePrice alloc] initWithFiat:actualFiat];
+    YMMECommerceProduct *product = [[YMMECommerceProduct alloc] initWithSKU:productCode
+                                                                       name:productName
+                                                         categoryComponents:nil
+                                                                    payload:nil
+                                                                actualPrice:actualPrice
+                                                              originalPrice:nil
+                                                                 promoCodes:nil];
+    YMMECommerceCartItem *cartItem = [[YMMECommerceCartItem alloc] initWithProduct:product quantity:[[NSDecimalNumber alloc] initWithInt:quantityValue] revenue:actualPrice referrer:nil];
+    return cartItem;
 }
 
 @end

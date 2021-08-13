@@ -222,4 +222,24 @@ class AppmetricaSdk {
         'reportRemoveFromCartEvent', attributes.toMap());
     return;
   }
+
+  Future<void> reportBeginCheckoutEvent(
+      {required CartAttributes attributes}) async {
+    if (_apiKey == null) {
+      throw 'The API key is not set';
+    }
+    await _channel.invokeMethod<String>(
+        'reportBeginCheckoutEvent', attributes.toMap());
+    return;
+  }
+
+  Future<void> reportPurchaseEvent(
+      {required CartAttributes attributes}) async {
+    if (_apiKey == null) {
+      throw 'The API key is not set';
+    }
+    await _channel.invokeMethod<String>(
+        'reportPurchaseEvent', attributes.toMap());
+    return;
+  }
 }

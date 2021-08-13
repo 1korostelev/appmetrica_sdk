@@ -10,7 +10,7 @@ import android.util.Log;
 import android.app.Application;
 import android.content.Context;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Map;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
@@ -26,9 +26,9 @@ import com.yandex.metrica.YandexMetricaConfig;
 import com.yandex.metrica.ecommerce.ECommerceAmount;
 import com.yandex.metrica.ecommerce.ECommerceCartItem;
 import com.yandex.metrica.ecommerce.ECommerceEvent;
+import com.yandex.metrica.ecommerce.ECommerceOrder;
 import com.yandex.metrica.ecommerce.ECommercePrice;
 import com.yandex.metrica.ecommerce.ECommerceProduct;
-import com.yandex.metrica.ecommerce.ECommerceScreen;
 import com.yandex.metrica.profile.Attribute;
 import com.yandex.metrica.profile.UserProfile;
 
@@ -86,6 +86,12 @@ public class AppmetricaSdkPlugin implements MethodCallHandler, FlutterPlugin {
                 break;
             case "reportRemoveFromCartEvent":
                 handleReportRemoveFromCartEvent(call, result);
+                break;
+            case "reportBeginCheckoutEvent":
+                handleReportBeginCheckoutEvent(call, result);
+                break;
+            case "reportPurchaseEvent":
+                handleReportPurchaseEvent(call, result);
                 break;
             case "reportUserProfileCustomString":
                 handleReportUserProfileCustomString(call, result);
@@ -213,28 +219,13 @@ public class AppmetricaSdkPlugin implements MethodCallHandler, FlutterPlugin {
             Map<String, Object> arguments = (Map<String, Object>) call.arguments;
             @SuppressWarnings("unchecked")
             Map<String, Object> attributes = (Map<String, Object>) arguments.get("attributes");
-
             if (attributes != null) {
-                final String productName = (String) attributes.get("product");
-                final String productCode = (String) attributes.get("productCode");
-                final Double price = (Double) attributes.get("price");
-                final Integer quantity = (Integer) attributes.get("quantity");
-                System.out.println("name: " + productName + " code: " + productCode + " price:" + price);
-                if (productName == null || productCode == null || price == null || quantity == null)
-                    return;
-
-                ECommercePrice actualPrice = new ECommercePrice(new ECommerceAmount(price, "RUB"));
-                ECommerceProduct product = new ECommerceProduct(productCode)
-                        .setActualPrice(actualPrice) // Optional.
-                        .setName(productName); // Optional.
-
-                ECommerceEvent addCartItemEvent = ECommerceEvent.addCartItemEvent(
-                        new ECommerceCartItem(product, actualPrice, quantity)
-                );
-
-                YandexMetrica.reportECommerce(addCartItemEvent);
+                ECommerceCartItem cartItem = produceCartItem(attributes);
+                if (cartItem != null) {
+                    ECommerceEvent addCartItemEvent = ECommerceEvent.addCartItemEvent(cartItem);
+                    YandexMetrica.reportECommerce(addCartItemEvent);
+                }
             }
-
         } catch (Exception e) {
             Log.e(TAG, e.getMessage(), e);
             result.error("Error reporting event", e.getMessage(), null);
@@ -248,34 +239,92 @@ public class AppmetricaSdkPlugin implements MethodCallHandler, FlutterPlugin {
             Map<String, Object> arguments = (Map<String, Object>) call.arguments;
             @SuppressWarnings("unchecked")
             Map<String, Object> attributes = (Map<String, Object>) arguments.get("attributes");
-
             if (attributes != null) {
-                final String productName = (String) attributes.get("product");
-                final String productCode = (String) attributes.get("productCode");
-                final Double price = (Double) attributes.get("price");
-                final Integer quantity = (Integer) attributes.get("quantity");
-                System.out.println("name: " + productName + " code: " + productCode + " price:" + price);
-                if (productName == null || productCode == null || price == null || quantity == null)
-                    return;
-
-                ECommercePrice actualPrice = new ECommercePrice(new ECommerceAmount(price, "RUB"));
-                ECommerceProduct product = new ECommerceProduct(productCode)
-                        .setActualPrice(actualPrice) // Optional.
-                        .setName(productName); // Optional.
-
-                ECommerceEvent removeCartEvent = ECommerceEvent.removeCartItemEvent(
-                        new ECommerceCartItem(product, actualPrice, quantity)
-                );
-
-                YandexMetrica.reportECommerce(removeCartEvent);
+                ECommerceCartItem cartItem = produceCartItem(attributes);
+                if (cartItem != null) {
+                    ECommerceEvent removeCartEvent = ECommerceEvent.removeCartItemEvent(cartItem);
+                    YandexMetrica.reportECommerce(removeCartEvent);
+                }
             }
-
-
         } catch (Exception e) {
             Log.e(TAG, e.getMessage(), e);
             result.error("Error reporting event", e.getMessage(), null);
         }
         result.success(null);
+    }
+
+    private void handleReportBeginCheckoutEvent(MethodCall call, Result result) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> arguments = (Map<String, Object>) call.arguments;
+            final String cartId = (String) arguments.get("cartId");
+            @SuppressWarnings("unchecked")
+            ArrayList<Map<String, Object>> cartItems = (ArrayList<Map<String, Object>>) arguments.get("cartItems");
+            if (cartItems != null && cartId != null) {
+                ArrayList<ECommerceCartItem> cartItemsList = produceECCartItems(cartItems);
+                ECommerceOrder order = new ECommerceOrder(cartId, cartItemsList);
+                ECommerceEvent beginCheckoutEvent = ECommerceEvent.beginCheckoutEvent(order);
+                YandexMetrica.reportECommerce(beginCheckoutEvent);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage(), e);
+            result.error("Error reporting event", e.getMessage(), null);
+        }
+        result.success(null);
+    }
+
+    private void handleReportPurchaseEvent(MethodCall call, Result result) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> arguments = (Map<String, Object>) call.arguments;
+            final String cartId = (String) arguments.get("cartId");
+            @SuppressWarnings("unchecked")
+            ArrayList<Map<String, Object>> cartItems = (ArrayList<Map<String, Object>>) arguments.get("cartItems");
+            if (cartItems != null && cartId != null) {
+                ArrayList<ECommerceCartItem> cartItemsList = produceECCartItems(cartItems);
+                ECommerceOrder order = new ECommerceOrder(cartId, cartItemsList);
+                ECommerceEvent purchaseEvent = ECommerceEvent.purchaseEvent(order);
+                YandexMetrica.reportECommerce(purchaseEvent);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage(), e);
+            result.error("Error reporting event", e.getMessage(), null);
+        }
+        result.success(null);
+    }
+
+    private ArrayList<ECommerceCartItem> produceECCartItems(ArrayList<Map<String, Object>> cartItems) {
+        ArrayList<ECommerceCartItem> cartItemsList = new ArrayList<>();
+        for (Map<String, Object> item : cartItems) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> itemAttributes = (Map<String, Object>) item.get("attributes");
+            if (itemAttributes != null) {
+                ECommerceCartItem cartItem = produceCartItem(itemAttributes);
+                if (cartItem != null) {
+                    cartItemsList.add(cartItem);
+                }
+            }
+        }
+        for (ECommerceCartItem i : cartItemsList) {
+            System.out.println(i.toString());
+        }
+        return cartItemsList;
+    }
+
+    private ECommerceCartItem produceCartItem(Map<String, Object> itemAttributes) {
+        final String productName = (String) itemAttributes.get("product");
+        final String productCode = (String) itemAttributes.get("productCode");
+        final Double price = (Double) itemAttributes.get("price");
+        final Integer quantity = (Integer) itemAttributes.get("quantity");
+
+        if (productName == null || productCode == null || price == null || quantity == null)
+            return null;
+
+        ECommercePrice actualPrice = new ECommercePrice(new ECommerceAmount(price, "RUB"));
+        ECommerceProduct product = new ECommerceProduct(productCode)
+                .setActualPrice(actualPrice) // Optional.
+                .setName(productName); // Optional.
+        return new ECommerceCartItem(product, actualPrice, quantity);
     }
 
     private void handleReportUserProfileCustomString(MethodCall call, Result result) {

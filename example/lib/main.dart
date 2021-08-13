@@ -140,10 +140,11 @@ class _MyAppState extends State<MyApp> {
                       onPressed: () {
                         AppmetricaSdk().reportShowProductDetailsEvent(
                           attributes: ProductAttributes(
-                              price: 100,
-                              product: 'Super Tasty Cake',
-                              productCode: 'cake-spr-tsts',
-                              category: 'cakes'),
+                            price: 100.50,
+                            product: 'Super Tasty Cake',
+                            productCode: 'cake-spr-tsts',
+                            category: 'cakes',
+                          ),
                         );
                       },
                     ),
@@ -171,6 +172,58 @@ class _MyAppState extends State<MyApp> {
                             productCode: 'cake-spr-tsts',
                             category: 'cakes',
                             quantity: 5,
+                          ),
+                        );
+                      },
+                    ),
+                    RaisedButton(
+                      child: const Text('Send begin checkout event'),
+                      onPressed: () {
+                        AppmetricaSdk().reportBeginCheckoutEvent(
+                          attributes: CartAttributes(
+                            cartId: '123',
+                            cartItems: [
+                              ProductAttributes(
+                                price: 250,
+                                product: 'Super Tasty Cake',
+                                productCode: 'cake-spr-tsts',
+                                category: 'cakes',
+                                quantity: 2,
+                              ),
+                              ProductAttributes(
+                                price: 150,
+                                product: 'Milk',
+                                productCode: 'milk-0.5',
+                                category: 'milk',
+                                quantity: 1,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    RaisedButton(
+                      child: const Text('Send purchase event'),
+                      onPressed: () {
+                        AppmetricaSdk().reportPurchaseEvent(
+                          attributes: CartAttributes(
+                            cartId: '123',
+                            cartItems: [
+                              ProductAttributes(
+                                price: 250,
+                                product: 'Super Tasty Cake',
+                                productCode: 'cake-spr-tsts',
+                                category: 'cakes',
+                                quantity: 2,
+                              ),
+                              ProductAttributes(
+                                price: 150,
+                                product: 'Milk',
+                                productCode: 'milk-0.5',
+                                category: 'milk',
+                                quantity: 1,
+                              ),
+                            ],
                           ),
                         );
                       },

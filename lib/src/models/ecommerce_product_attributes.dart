@@ -1,5 +1,25 @@
 part of appmetrica_sdk;
 
+class CartAttributes {
+  String cartId;
+  List<ProductAttributes> cartItems;
+
+  CartAttributes({required this.cartId, required this.cartItems});
+
+  Map<String, dynamic> toMap() {
+    return {
+      'cartId': cartId,
+      'cartItems': buildCartItems(),
+    };
+  }
+
+  List<Map> buildCartItems() {
+    List<Map> result = [];
+    cartItems.forEach((element) => result.add(element.toMap()));
+    return result;
+  }
+}
+
 class ProductAttributes {
   final double price;
   final String productCode;
